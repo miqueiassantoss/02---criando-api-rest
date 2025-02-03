@@ -6,6 +6,10 @@ import { checkSessionIdExists } from '../middlewares/check-session-id-exist';
 
 export async function transactionsRoutes(app: FastifyInstance) {
   
+
+
+
+
   app.get('/', {preHandler: [checkSessionIdExists]} ,async (request, reply) => {
     const { sessionId } = request.cookies;
 
@@ -16,7 +20,6 @@ export async function transactionsRoutes(app: FastifyInstance) {
     return {transactions}
   }) 
 
-  //http:localhost:3333/transactions/isaisajisfn2277 (id)
   app.get("/:id", { preHandler: [checkSessionIdExists] }, async (request) => {
     const getTransactionParamsSchema = z.object({
       id: z.string().uuid(),

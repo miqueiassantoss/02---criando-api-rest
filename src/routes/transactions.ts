@@ -4,9 +4,35 @@ import {knex} from '../database'
 import { randomUUID } from 'crypto';
 
 export async function transactionsRoutes(app: FastifyInstance) {
-  app.post("/", async (request, reply) => {
-    //{title, amount, type: debit or credit}
+  
+  app.get('/', async () => {
+    const transactions = await knex('transactions').select()
 
+    return {transactions}
+  }) 
+
+  //http:localhost:3333/transactions/isaisajisfn2277 (id)
+  app.get('/:id', async (request) => {
+    const getTransactionParamsSchema = z.object({
+      id: z.string().uuid(),
+    })
+
+    const {id} = getTransactionParamsSchema.parse(request.params)
+
+    const transaction = await knex('transactions').where('id', id).first()
+
+    return {transaction}
+  })
+
+  
+  app.get('/summary', async () => {
+    const summary = await knex('transactions').sum('amount', {as: 'amount'}).first()
+
+    return { summary}
+  })
+
+
+  app.post("/", async (request, reply) => {
     const createTransasctionBodySchema = z.object({
       title: z.string(),
       amount: z.number(),
@@ -15,13 +41,26 @@ export async function transactionsRoutes(app: FastifyInstance) {
 
     const {title, amount, type} = createTransasctionBodySchema.parse(request.body,)
 
-  await knex('transactions')
-   .insert({
-    id: randomUUID(),
-    title,
-    amount: type === 'credit' ? amount: amount * -1,
-   })
+    /*Procurando dentro dos cookies da req se já existe uma session Id*/
+    let sessionId = request.cookies.sessionId
 
-    return reply.status(201).send("Deu certo!")
-  });
-}
+    //Se não tiver, ele vai criar.
+    if(!sessionId) {
+      sessionId = randomUUID()
+      reply.cookie('sessionId', sessionId, {
+        path: '/', //Disponibilizando o cookie em todas as rotas
+        maxAge: 60 * 60 * 24 * 7  /*Expiração do Cookie, da pra usar o expires que faz expirar em uma dia especifico, e esse maxAge é em segundos. No caso, fizemos ele disponível por 7 dias.*/
+      })
+    }
+
+    await knex('transactions')
+    .insert({
+      id: randomUUID(),
+      title,
+      amount: type === 'credit' ? amount: amount * -1,
+      session_id: sessionId,
+    })
+
+      return reply.status(201).send("Deu certo!")
+    });
+  }
